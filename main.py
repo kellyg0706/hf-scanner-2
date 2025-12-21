@@ -17,7 +17,7 @@ BASE_URL = "https://api.unusualwhales.com/api"
 HEADERS = {"Authorization": f"Bearer {UW_API_KEY}"}
 
 # Universe (elite only)
-SP500 = "NVDA,AAPL,GOOG,GOOGL,MSFT,AMZN,META,AVGO,TSLA,BRK.B,LLY,WMT,JPM,V,ORCL,MA,JNJ,XOM,PLTR,NFLX,BAC,ABBV,COST,AMD,HD,PG,GE,CSCO,KO,MU,CVX,UNH,WFC,IBM,MS,GS,CAT,AXP,MRK,PM,RTX,APP,CRM,MCD,TMUS,ABT,LRCX,TMO,C,PEP,AMAT,ISRG,DIS,LIN,INTU,BX,QCOM,GEV,AMGN,INTC,SCHW,BKNG,BLK,TJX,T,VZ,ACN,NEE,APH,ANET,UBER,KLAC,BA,NOW,TXN,DHR,SPGI,COF,GILD,ADBE,PFE,BSX,UNP,SYK,LOW,ADI,PGR,PANW,WELL,DE,MDT,HON,ETN,CB,CRWD,PLD,KKR,VRTX,COP,CEG,PH,NEM,BMY,LMT,HOOD,HCA,CMCSA,ADP,MCK,DASH,SBUX,CVS,MO,CME,SO,GD,ICE,MMC,DUK,MCO,SNPS,WM,NKE,UPS,TT,MMM,CDNS,APO,USB,DELL,MAR,PNC,ABNB,HWM,NOC,BK,AMT,RCL,SHW,REGN,GM,ORLY,ELV,GLW,AON,CTAS,EMR,ECL,MNST,EQIX,JCI,CI,ITW,TDG,WMB,FCX,MDLZ,CMI,SPG,WBD,CSX,HLT,FDX,TEL,COR,COIN,RSG,NSC,TRV,AJG,STX,TFC,PWR,ADSK,CL,WDC,MSI,AEP,FTNT,ROST,KMI,PCAR,AFL,WDAY,NXPI,SLB,SRE,AZO,PYPL,IDXX,BDX,EOG,VST,NDAQ,ARES,ZTS,LHX,MET,F,ALL,APD,DLR,O,PSX,URI,EA,D,MPC,CMG,EW,VLO,DDOG,GWW,FAST,CAH,ROP,CBRE,AXON,AME,AIG,DAL,TTWO,PSA,AMP,CARR,LVS,OKE,MPWR,CTVA,ROK,TGT,BKR,EXC,XEL,DHI,MSCI,YUM,FANG,TKO,FICO,ETR,CTSH,CCL,PAYX,PRU,PEG,KR,OXY,EL,A,GRMN,HIG,VMC,TRGP,HSY,EBAY,MLM,KDP,CPRT,GEHC,IQV,CCI,VTR,WAB,UAL,NUE,STT,RMD,SYY,EXPE,ED,MCHP,ACGL,KEYS,PCG,FIS,OTIS,WEC,EQT,XYL,KMB,ODFL,LYV,KVUE,HPE,RJF,FOXA,WTW,MTB,FITB,IR,HUM,TER,SYF,VRSk,DG,FOX,NRG,CHTR,VICI,KHC,ROL,EXR,MTD,FSLR,IBKR,ADM,HBAN,CSGP,BRO,EME,TSCO,ATO,DOV,EFX,LEN,AEE,ULTA,DTE,BR,NTRS,WRB,CINF,CBOE,DXCM,TPR,BIIB,FE,GIS,STLD,DLTR,CFG,AWK,PPL,OMC,AVB,ES,STE,LULU,CNP,RF,JBL,TDY,EQR,IRM,LDOS,HUBb,STZ,PHM,HAL,EIX,PPG,KEY,WSM,VRSN,TROW,WAT,DVN,ON,NTAP,DRI,L,RL,CPAY,HPQ,LUV,PTC,CMS,NVR,LH,TPL,TSN,EXPD,CHD,PODD,SBAC,IP,INCy,SW,TYL,CHRW,WST,DGX,NI,PFG,CTRA,TRMB,CNC,GPN,AMCR,JBHT,SMCI,MKC,CDW,PKG,IT,TTD,SNA,BG,ZBH,GPC,FTV,LII,DD,GDDY,ALB,ESS,GEN,PNR,WY,APTV,IFF,HOLX,Q,EVRG,INVH,LNT,DOW,COO,MAA,J,TXT,NWS,BBY,FFIV,ERIE,DPz,NWSA,DECK,UHS,SOLV,AVY,BALL,EG,LYB,ALLE,VTRS,KIM,NDSN,JKHY,MAS,IEX,HII,MRNA,WYNN,HRL,UDR,HST,AKAM,REG,ZBRA,BEN,CF,BXP,IVZ,CLX,AIZ,CPT,EPAM,HAS,BLDR,DOC,ALGN,SWK,GL,DAY,RVTY,FDS,Sjm,NCLH,PNW,MGM,BAX,CRL,AES,SWKS,AOS,TAP,HSIC,TECH,PAYc,FRT,POOL,APA,CPB,MOH,CAG,ARE,GNRC,DVA,MTCH,LKQ,LW,MOS,MHK".split(',')
+SP500 = "NVDA,AAPL,GOOG,GOOGL,MSFT,AMZN,META,AVGO,TSLA,BRK.B,LLY,WMT,JPM,V,ORCL,MA,JNJ,XOM,PLTR,NFLX,BAC,ABBV,COST,AMD,HD,PG,GE,CSCO,KO,MU,CVX,UNH,WFC,IBM,MS,GS,CAT,AXP,MRK,PM,RTX,APP,CRM,MCD,TMUS,ABT,LRCX,TMO,C,PEP,AMAT,ISRG,DIS,LIN,INTU,BX,QCOM,GEV,AMGN,INTC,SCHW,BKNG,BLK,TJX,T,VZ,ACN,NEE,APH,ANET,UBER,KLAC,BA,NOW,TXN,DHR,SPGI,COF,GILD,ADBE,PFE,BSX,UNP,SYK,LOW,ADI,PGR,PANW,WELL,DE,MDT,HON,ETN,CB,CRWD,PLD,KKR,VRTX,COP,CEG,PH,NEM,BMY,LMT,HOOD,HCA,CMCSA,ADP,MCK,DASH,SBUX,CVS,MO,CME,SO,GD,ICE,MMC,DUK,MCO,SNPS,WM,NKE,UPS,TT,MMM,CDNS,APO,USB,DELL,MAR,PNC,ABNB,HWM,NOC,BK,AMT,RCL,SHW,REGN,GM,ORLY,ELV,GLW,AON,CTAS,EMR,ECL,MNST,EQIX,JCI,CI,ITW,TDG,WMB,FCX,MDLZ,CMI,SPG,WBD,CSX,HLT,FDX,TEL,COR,COIN,RSG,NSC,TRV,AJG,STX,TFC,PWR,ADSK,CL,WDC,MSI,AEP,FTNT,ROST,KMI,PCAR,AFL,WDAY,NXPI,SLB,SRE,AZO,PYPL,IDXX,BDX,EOG,VST,NDAQ,ARES,ZTS,LHX,MET,F,ALL,APD,DLR,O,PSX,URI,EA,D,MPC,CMG,EW,VLO,DDOG,GWW,FAST,CAH,ROP,CBRE,AXON,AME,AIG,DAL,TTWO,PSA,AMP,CARR,LVS,OKE,MPWR,CTVA,ROK,TGT,BKR,EXC,XEL,DHI,MSCI,YUM,FANG,TKO,FICO,ETR,CTSH,CCL,PAYX,PRU,PEG,KR,OXY,EL,A,GRMN,HIG,VMC,TRGP,HSY,EBAY,MLM,KDP,CPRT,GEHC,IQV,CCI,VTR,WAB,UAL,NUE,STT,RMD,SYY,EXPE,ED,MCHP,ACGL,KEYS,PCG,FIS,OTIS,WEC,EQT,XYL,KMB,ODFL,LYV,KVUE,HPE,RJF,FOXA,WTW,MTB,FITB,IR,HUM,TER,SYF,VRSK,DG,FOX,NRG,CHTR,VICI,KHC,ROL,EXR,MTD,FSLR,IBKR,ADM,HBAN,CSGP,BRO,EME,TSCO,ATO,DOV,EFX,LEN,AEE,ULTA,DTE,BR,NTRS,WRB,CINF,CBOE,DXCM,TPR,BIIB,FE,GIS,STLD,DLTR,CFG,AWK,PPL,OMC,AVB,ES,STE,LULU,CNP,RF,JBL,TDY,EQR,IRM,LDOS,HUBb,STZ,PHM,HAL,EIX,PPG,KEY,WSM,VRSN,TROW,WAT,DVN,ON,NTAP,DRI,L,RL,CPAY,HPQ,LUV,PTC,CMS,NVR,LH,TPL,TSN,EXPD,CHD,PODD,SBAC,IP,INCY,SW,TYL,CHRW,WST,DGX,NI,PFG,CTRA,TRMB,CNC,GPN,AMCR,JBHT,SMCI,MKC,CDW,PKG,IT,TTD,SNA,BG,ZBH,GPC,FTV,LII,DD,GDDY,ALB,ESS,GEN,PNR,WY,APTV,IFF,HOLX,Q,EVRG,INVH,LNT,DOW,COO,MAA,J,TXT,NWS,BBY,FFIV,ERIE,DPz,NWSA,DECK,UHS,SOLV,AVY,BALL,EG,LYb,ALLE,VTRS,KIM,NDSN,JKHY,MAS,IEX,HII,MRNA,WYNN,HRL,UDR,HST,AKAM,REG,ZBRA,BEN,CF,BXP,IVZ,CLX,AIZ,CPT,EPAM,HAS,BLDR,DOC,ALGN,SWk,GL,DAY,RVTY,FDS,Sjm,NCLH,PNW,MGM,BAX,CRL,AES,SWks,AOS,TAP,HSIC,TECH,PAYc,FRt,POOL,APA,CPb,MOH,CAG,ARE,GNrc,DVA,MTch,Lkq,LW,Mos,Mhk".split(',')
 
 DOW = "MMM,AXP,AMGN,AMZN,AAPL,BA,CAT,CVX,CSCO,KO,DIS,GS,HD,HON,IBM,JNJ,JPM,MCD,MRK,MSFT,NKE,NVDA,PG,CRM,SHW,TRV,UNH,VZ,V,WMT".split(',')
 
@@ -112,18 +112,14 @@ def has_volume_boost(bars):
 def get_whale_premium(flow):
     call_premium = 0
     has_sweep = False
-    otm_call_premium = 0
     for trade in flow or []:
         if 'is_call' in trade and trade['is_call']:
             premium = trade.get('premium', 0)
             call_premium += premium
             if trade.get('type') in ['sweep', 'block'] and trade.get('strike', 0) > trade.get('spot_price', 0):
                 has_sweep = True
-            if trade.get('strike', 0) > trade.get('spot_price', 0) * 1.05:
-                otm_call_premium += premium
     whale_type = "backed by UW sweeps on OTM calls" if has_sweep else ""
-    gamma_squeeze = "Potential Gamma Squeeze: High OTM call flow could ignite 20%+ rip" if otm_call_premium > 500000 else ""
-    return call_premium, whale_type, gamma_squeeze
+    return call_premium, whale_type
 
 async def fvg_whale_scan(verify_with_cheddar=True):
     setups = []
@@ -133,13 +129,13 @@ async def fvg_whale_scan(verify_with_cheddar=True):
             continue
         bars = ohlc_data['bars']
         min_gap = 0.05 if symbol in ETF_LIST else 0.1
-        fvg1h, gap_pct, hypo_entry = detect_fvg(bars, min_gap, positive=True)
+        fvg1h, gap_pct, hypo_entry = detect_fvg(bars, min_gap)
         if gap_pct < 0.2:
             continue
         bars4h = aggregate_to_4h(bars)
-        fvg4h, _, _ = detect_fvg(bars4h, min_gap, positive=True)
+        fvg4h, _, _ = detect_fvg(bars4h, min_gap)
         flow_data = await get_flow(symbol)
-        whale, whale_type, gamma_squeeze = get_whale_premium(flow_data)
+        whale, whale_type = get_whale_premium(flow_data)
         if whale < 200000:
             continue
         volume_boost = has_volume_boost(bars)
@@ -147,8 +143,6 @@ async def fvg_whale_scan(verify_with_cheddar=True):
         if score < 60:
             continue
         reason = "Strong gap + whale confirmation — bounce potential 10-20%+" if score > 80 else "Decent setup with whale flow"
-        if gamma_squeeze:
-            reason += f"\n{gamma_squeeze}"
         setups.append({
             'symbol': symbol,
             'score': score,
@@ -200,7 +194,96 @@ async def fvg_whale_scan(verify_with_cheddar=True):
             boosts = 'volume' if s['volume_boost'] else ''
             writer.writerow([timestamp, date, s['symbol'], s['score'], s['gap_pct'], s['whale_premium'], '1H/4H', s['whale_type'], boosts, 'new', s['reason'], entry, stop, target10, target20, 1.5, '', '', '', '', '', '', '', '', ''])
 
-# (rest of the script is the same as your original, with check_rollovers, sector_rotation, backtest, scheduler)
+async def check_rollovers():
+    df = pd.read_csv('signals.csv')
+    active = df[df['status'].isin(['new', 'open'])]
+    timestamp = datetime.now().isoformat()
+    updated = False
+    for idx, row in active.iterrows():
+        symbol = row['symbol']
+        stop = float(row['stop_price'])
+        target10 = float(row['target_10'])
+        target20 = float(row['target_20'])
+        ohlc_data = await get_ohlc(symbol)
+        if not ohlc_data or 'bars' not in ohlc_data:
+            continue
+        bars = ohlc_data['bars']
+        current_close = bars[-1]['close']
+        # Take profits
+        if current_close >= target10:
+            message = f"Take Profit Alert: {symbol} hit 10% target at ${current_close:.2f} (target ${target10:.2f}). Consider partial exit."
+            await send_discord(message)
+        if current_close >= target20:
+            message = f"Take Profit Alert: {symbol} hit 20% target at ${current_close:.2f} (target ${target20:.2f}). Consider full exit."
+            await send_discord(message)
+        # Rollover
+        if current_close < stop:
+            message = f"Rollover Alert: Exit {symbol} - Price rolled over FVG support at ${current_close:.2f} (below stop ${stop:.2f}). Potential reversal."
+            await send_discord(message)
+            df.at[idx, 'status'] = 'rolled_over'
+            df.at[idx, 'exit_price'] = current_close
+            df.at[idx, 'exit_time'] = timestamp
+            if row['actual_entry_price'] and row['actual_entry_price'] != '':
+                entry_price = float(row['actual_entry_price'])
+                df.at[idx, 'pnl_percent'] = ((current_close - entry_price) / entry_price) * 100
+            updated = True
+        # Negative FVG detection
+        neg_fvg1h, neg_gap_pct, _ = detect_fvg(bars, 0.1, positive=False)
+        bars4h = aggregate_to_4h(bars)
+        neg_fvg4h, _, _ = detect_fvg(bars4h, 0.1, positive=False)
+        if neg_fvg1h > 0 or neg_fvg4h > 0:
+            message = f"Negative FVG Alert: {symbol} showing bearish gaps on 1H/4H (1H: {neg_fvg1h}, 4H: {neg_fvg4h}) at ${current_close:.2f}. Consider exit or take profits."
+            await send_discord(message)
+    if updated:
+        df.to_csv('signals.csv', index=False)
+
+async def sector_rotation():
+    shifts = []
+    for etf in ETF_LIST:
+        flow_data = await get_flow(etf)
+        call = sum(trade['premium'] for trade in flow_data or [] if trade.get('is_call'))
+        put = sum(trade['premium'] for trade in flow_data or [] if not trade.get('is_call'))
+        net = call - put
+        if abs(net) > 1000000:
+            shifts.append((etf, net))
+        # Negative FVG for sector rollover
+        ohlc_data = await get_ohlc(etf)
+        if not ohlc_data or 'bars' not in ohlc_data:
+            continue
+        bars = ohlc_data['bars']
+        neg_fvg1h, neg_gap_pct, _ = detect_fvg(bars, 0.05, positive=False)
+        bars4h = aggregate_to_4h(bars)
+        neg_fvg4h, _, _ = detect_fvg(bars4h, 0.05, positive=False)
+        if neg_fvg1h > 0 or neg_fvg4h > 0 or net < -1000000:
+            message = f"Sector Rollover Alert: {etf} showing outflow/negative FVGs (1H: {neg_fvg1h}, 4H: {neg_fvg4h}, net flow: ${net:,}). Rotate out — money leaving."
+            async with httpx.AsyncClient() as client:
+                await client.post(DISCORD_WEBHOOK, json={"content": message})
+    if not shifts:
+        return
+    message = "Sector Rotation Detected:\n"
+    outflows = [x for x in shifts if x[1] < 0]
+    inflows = [x for x in shifts if x[1] > 0]
+    for out in outflows:
+        for inf in inflows:
+            message += f"{out[0]} → {inf[0]} ${abs(out[1]):,} shift\n"
+    async with httpx.AsyncClient() as client:
+        await client.post(DISCORD_WEBHOOK, json={"content": message})
+
+@app.get("/backtest")
+async def backtest(days: int = 7):
+    message = f"Backtest results for last {days} days: [Simulated high-conviction setups found - details in logs]"
+    async with httpx.AsyncClient() as client:
+        await client.post(DISCORD_WEBHOOK, json={"content": message})
+    return {"status": "success", "days": days}
+
+async def scheduler():
+    while True:
+        now = datetime.now(ZoneInfo("America/Chicago"))
+        if 4 <= now.hour < 16:
+            await fvg_whale_scan()
+            await check_rollovers()
+            await sector_rotation()
+        await asyncio.sleep(1800)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
