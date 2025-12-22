@@ -1,7 +1,7 @@
 import os
 import asyncio
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
 import csv
 import pandas as pd
 from zoneinfo import ZoneInfo
@@ -61,21 +61,42 @@ async def get_flow(symbol):
             print(f"Error fetching flow for {symbol}: {e}")
             return None
 
-def detect_fvg(bars, min_gap):
-    positive_fvg_count = 0
+async def get_darkpool(symbol):
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{BASE_URL}/darkpool_ticker", params={"ticker": symbol}, headers=HEADERS)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            print(f"Error fetching darkpool for {symbol}: {e}")
+            return None
+
+def detect_fvg(bars, min_gap, positive=True):
+    fvg_count = 0
     latest_gap_pct = 0
     hypo_entry_price = 0
     for i in range(1, len(bars)):
         previous_high = bars[i-1]['high']
+        previous_low = bars[i-1]['low']
         current_low = bars[i]['low']
-        if current_low > previous_high:
-            gap = current_low - previous_high
-            gap_pct = (gap / previous_high) * 100
-            if gap_pct > min_gap:
-                positive_fvg_count += 1
-                latest_gap_pct = gap_pct
-                hypo_entry_price = (previous_high + current_low) / 2
-    return positive_fvg_count, latest_gap_pct, hypo_entry_price
+        current_high = bars[i]['high']
+        if positive:
+            if current_low > previous_high:
+                gap = current_low - previous_high
+                gap_pct = (gap / previous_high) * 100
+                if gap_pct > min_gap:
+                    fvg_count += 1
+                    latest_gap_pct = gap_pct
+                    hypo_entry_price = (previous_high + current_low) / 2
+        else:
+            if current_high < previous_low:
+                gap = previous_low - current_high
+                gap_pct = (gap / previous_low) * 100
+                if gap_pct > min_gap:
+                    fvg_count += 1
+                    latest_gap_pct = gap_pct
+                    hypo_entry_price = (current_high + previous_low) / 2
+    return fvg_count, latest_gap_pct, hypo_entry_price
 
 def aggregate_to_4h(bars):
     aggregated = []
@@ -110,9 +131,33 @@ def get_whale_premium(flow):
     whale_type = "backed by UW sweeps on OTM calls" if has_sweep else ""
     return call_premium, whale_type
 
+async def get_macro_context():
+    macro_symbols = {'^VIX': 'VIX', 'CL=F': 'Crude Oil', '^TNX': '10yr Yield', 'GC=F': 'Gold', 'SI=F': 'Silver', 'DX-Y.NYB': 'DXY'}
+    context = "Macro Context: "
+    for sym, name in macro_symbols.items:
+        data = await get_ohlc(sym)
+        if data and 'bars' in data and data['bars']:
+            close = data['bars'][-1]['close']
+            context += f"{name} ${close:.2f} | "
+    return context.rstrip(" | ")
+
+async def darkpool_scan():
+    major_symbols = ['SPY', 'QQQ', 'IWM', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN']
+    for symbol in major_symbols:
+        darkpool_data = await get_darkpool(symbol)
+        if not darkpool_data or 'data' not in darkpool_data:
+            continue
+        total_notional = sum(trade.get('price', 0) * trade.get('size', 0) for trade in darkpool_data['data'])
+        if total_notional > 50000000:  # $50M+ daily notional
+            message = f"Dark Pool Accumulation Alert: {symbol} — ${total_notional:,.0f} notional today (bullish springboard potential)"
+            await send_discord(message)
+
 async def fvg_whale_scan(verify_with_cheddar=True):
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    is_pre_market = now.hour < 8 or (now.hour == 8 and now.minute < 30)
     whale_threshold = 10000  # $10k all day for holiday low-volume
     gap_threshold = 0.12
+    macro = await get_macro_context()
     positive_fvg_list = []
     negative_fvg_list = []
     for symbol in UNIVERSE:
@@ -148,26 +193,24 @@ async def fvg_whale_scan(verify_with_cheddar=True):
                 'neg4h': neg4h,
                 'neg_gap': neg_gap
             })
-    # Positive FVGs Alert
+    # Alerts
+    message = f"{macro}\n\n"
     if positive_fvg_list:
-        message = "Positive FVG Detected (1H/4H)\n\n"
+        message += "Positive FVG Detected (1H/4H)\n\n"
         for f in sorted(positive_fvg_list, key=lambda x: x['call_premium'], reverse=True)[:20]:
             boost_text = "Yes — conviction buying" if f['volume_boost'] else "No"
             message += f"{f['symbol']} — Positive FVG (1H: {f['pos1h']}, 4H: {f['pos4h']}, gap {f['pos_gap']:.2f}%)\n"
             message += f"Volume Boost: {boost_text}\n"
             message += f"Whale Status: {f['whale_status']} (${f['call_premium']:,} call premium)\n\n"
-        await send_discord(message)
-    # Negative FVGs Alert
     if negative_fvg_list:
-        message = "Negative FVG Detected (1H/4H) — Potential Rollover\n\n"
+        message += "Negative FVG Detected (1H/4H) — Potential Rollover\n\n"
         for f in sorted(negative_fvg_list, key=lambda x: x['neg_gap'], reverse=True)[:20]:
             message += f"{f['symbol']} — Negative FVG (1H: {f['neg1h']}, 4H: {f['neg4h']}, gap {f['neg_gap']:.2f}%)\n"
             message += "Consider exit or take profits — money leaving\n\n"
-        await send_discord(message)
-    # If no FVGs
     if not positive_fvg_list and not negative_fvg_list:
-        message = "No positive or negative FVGs this scan — waiting for gaps/volume"
-        await send_discord(message)
+        message += "No positive or negative FVGs this scan — waiting for gaps/volume\n"
+    await send_discord(message)
+    await darkpool_scan()
 
 async def check_rollovers():
     df = pd.read_csv('signals.csv')
