@@ -113,8 +113,8 @@ def get_whale_premium(flow):
 async def fvg_whale_scan(verify_with_cheddar=True):
     now = datetime.now(ZoneInfo("America/Chicago"))
     is_pre_market = now.hour < 8 or (now.hour == 8 and now.minute < 30)
-    whale_threshold = 25000 if is_pre_market else 75000  # $25k pre-market, $75k open
-    gap_threshold = 0.15 if is_pre_market else 0.2
+    whale_threshold = 25000 if is_pre_market else 75000  # $25k pre-market, $75k open for holiday/low-volume
+    gap_threshold = 0.15 if is_pre_market else 0.18
     setups = []
     for symbol in UNIVERSE:
         ohlc_data = await get_ohlc(symbol)
@@ -134,7 +134,7 @@ async def fvg_whale_scan(verify_with_cheddar=True):
         score = gap_pct * 1500 + whale / 10000 + (20 if volume_boost else 0)
         if score < 60:
             continue
-        reason = "Early Conviction FVG — building whale flow (pre-market)" if is_pre_market else "High Conviction Confirmed — whale step-in"
+        reason = "Early Conviction FVG — building whale flow" if is_pre_market else "High Conviction Confirmed — whale step-in"
         setups.append({
             'symbol': symbol,
             'score': score,
@@ -149,9 +149,9 @@ async def fvg_whale_scan(verify_with_cheddar=True):
         })
     setups = sorted(setups, key=lambda x: x['score'], reverse=True)[:20]
     if not setups:
-        message = f"No {'early' if is_pre_market else 'high'} conviction FVGs this scan (threshold ${whale_threshold:,}) — waiting for whale/volume"
+        message = f"No high-conviction FVGs this scan (threshold ${whale_threshold:,}) — waiting for whale/volume"
     else:
-        message = f"Top 20 {'Early Conviction' if is_pre_market else 'High Conviction'} FVG Setups (Detailed Analysis) — {'Pre-Market' if is_pre_market else 'Regular Hours'}\n\n"
+        message = f"Top 20 FVG Setups (Detailed Analysis) — {'Pre-Market' if is_pre_market else 'Regular Hours'}\n\n"
         for i, s in enumerate(setups, 1):
             boost_text = "Yes — conviction buying" if s['volume_boost'] else "No"
             entry = s['hypo_entry_price']
