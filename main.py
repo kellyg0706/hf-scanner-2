@@ -57,48 +57,30 @@ async def get_ohlc(symbol, interval='1h', limit=200):
             return None
 
 async def get_flow(symbol):
-    # Massive primary for better pre-market flow
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.get(f"{MASSIVE_BASE}/trades/options", params={"ticker": symbol, "limit": 1000}, headers=MASSIVE_HEADERS)
+            resp = await client.get(f"{UW_BASE}/flow-per-strike-intraday", params={"symbol": symbol}, headers=UW_HEADERS)
             resp.raise_for_status()
-            return resp.json()['data']  # Massive format
+            return resp.json()
         except Exception as e:
-            print(f"Massive error for {symbol}: {e} — fallback to UW")
-            # Fallback to UW
-            try:
-                resp = await client.get(f"{UW_BASE}/flow-per-strike-intraday", params={"symbol": symbol}, headers=UW_HEADERS)
-                resp.raise_for_status()
-                return resp.json()
-            except:
-                return []
+            print(f"Error fetching flow for {symbol}: {e}")
+            return None
 
-def detect_fvg(bars, min_gap, positive=True):
-    count = 0
+def detect_fvg(bars, min_gap):
+    positive_fvg_count = 0
     latest_gap_pct = 0
     hypo_entry_price = 0
     for i in range(1, len(bars)):
         previous_high = bars[i-1]['high']
-        previous_low = bars[i-1]['low']
         current_low = bars[i]['low']
-        current_high = bars[i]['high']
-        if positive:
-            if current_low > previous_high:
-                gap = current_low - previous_high
-                gap_pct = (gap / previous_high) * 100
-                if gap_pct > min_gap:
-                    count += 1
-                    latest_gap_pct = gap_pct
-                    hypo_entry_price = (previous_high + current_low) / 2
-        else:
-            if current_high < previous_low:
-                gap = previous_low - current_high
-                gap_pct = (gap / previous_low) * 100
-                if gap_pct > min_gap:
-                    count += 1
-                    latest_gap_pct = gap_pct
-                    hypo_entry_price = (current_high + previous_low) / 2
-    return count, latest_gap_pct, hypo_entry_price
+        if current_low > previous_high:
+            gap = current_low - previous_high
+            gap_pct = (gap / previous_high) * 100
+            if gap_pct > min_gap:
+                positive_fvg_count += 1
+                latest_gap_pct = gap_pct
+                hypo_entry_price = (previous_high + current_low) / 2
+    return positive_fvg_count, latest_gap_pct, hypo_entry_price
 
 def aggregate_to_4h(bars):
     aggregated = []
@@ -124,22 +106,89 @@ def has_volume_boost(bars):
 def get_whale_premium(flow):
     call_premium = 0
     has_sweep = False
-    otm_call_premium = 0
-    # Massive format handling
     for trade in flow or []:
-        if trade.get('call_or_put') == 'call' or trade.get('type') == 'call':
-            premium = trade.get('premium', 0) or trade.get('size', 0) * trade.get('price', 0) * 100
+        if 'is_call' in trade and trade['is_call']:
+            premium = trade.get('premium', 0)
             call_premium += premium
-            if trade.get('sweep') or trade.get('type') in ['sweep', 'block']:
+            if trade.get('type') in ['sweep', 'block'] and trade.get('strike', 0) > trade.get('spot_price', 0):
                 has_sweep = True
-            if trade.get('strike_price', 0) > trade.get('underlying_price', 0) * 1.05:
-                otm_call_premium += premium
-    whale_type = "backed by sweeps on OTM calls" if has_sweep else ""
-    gamma_squeeze = "Potential Gamma Squeeze: High OTM call flow could ignite 20%+ rip" if otm_call_premium > 500000 else ""
-    verification = "Verification: Cross-check Cheddar Flow for sweeps, SpotGamma for gamma flip"
-    return call_premium, whale_type, gamma_squeeze, verification
+    whale_type = "backed by UW sweeps on OTM calls" if has_sweep else ""
+    return call_premium, whale_type
 
-# (rest of the script is the same as your current one — fvg_whale_scan, check_rollovers, sector_rotation, backtest, scheduler)
+async def fvg_whale_scan(verify_with_cheddar=True):
+    setups = []
+    for symbol in UNIVERSE:
+        ohlc_data = await get_ohlc(symbol)
+        if not ohlc_data or 'bars' not in ohlc_data:
+            continue
+        bars = ohlc_data['bars']
+        min_gap = 0.05 if symbol in ETF_LIST else 0.1
+        fvg1h, gap_pct, hypo_entry = detect_fvg(bars, min_gap)
+        if gap_pct < 0.2:
+            continue
+        bars4h = aggregate_to_4h(bars)
+        fvg4h, _, _ = detect_fvg(bars4h, min_gap)
+        flow_data = await get_flow(symbol)
+        whale, whale_type = get_whale_premium(flow_data)
+        if whale < 200000:
+            continue
+        volume_boost = has_volume_boost(bars)
+        score = gap_pct * 1500 + whale / 10000 + (20 if volume_boost else 0)
+        if score < 60:
+            continue
+        reason = "Strong gap + whale confirmation — bounce potential 10-20%+" if score > 80 else "Decent setup with whale flow"
+        setups.append({
+            'symbol': symbol,
+            'score': score,
+            'gap_pct': gap_pct,
+            'whale_premium': whale,
+            'fvg1h': fvg1h,
+            'fvg4h': fvg4h,
+            'whale_type': whale_type,
+            'volume_boost': volume_boost,
+            'hypo_entry_price': hypo_entry,
+            'reason': reason
+        })
+    setups = sorted(setups, key=lambda x: x['score'], reverse=True)[:20]
+    if not setups:
+        message = "No high-conviction FVGs this scan — waiting for whale/volume"
+    else:
+        message = "Top 20 FVG Setups (Detailed Analysis)\n\n"
+        for i, s in enumerate(setups, 1):
+            boost_text = "Yes — conviction buying" if s['volume_boost'] else "No"
+            entry = s['hypo_entry_price']
+            stop = entry * 0.985
+            target10 = entry * 1.1
+            target20 = entry * 1.2
+            message += f"{i}. {s['symbol']} - Score {s['score']:.1f}\n"
+            message += f"FVG Structure: {s['fvg1h']} positive on 1H, {s['fvg4h']} on 4H — bullish gaps holding as support\n"
+            message += f"Whale Premium: ${s['whale_premium']:,} in call flow ({s['whale_type']})\n"
+            message += f"Volume Boost: {boost_text}\n"
+            message += f"Why #{i}: {s['reason']}\n"
+            message += f"Entry ~${entry:,.0f} | Stop ${stop:,.0f} (1.5%) | Target 10% ${target10:,.0f} | 20% ${target20:,.0f}\n"
+            if verify_with_cheddar:
+                message += f"Verification: Cross-check Cheddar Flow for similar call sweeps on {s['symbol']} – log in or search 'unusual options activity {s['symbol']} Cheddar Flow'\n\n"
+            else:
+                message += "\n"
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(DISCORD_WEBHOOK, json={"content": message})
+            print("Alert sent to Discord")
+        except Exception as e:
+            print(f"Discord send error: {e}")
+    timestamp = datetime.now().isoformat()
+    date = datetime.now().date()
+    with open('signals.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        for s in setups:
+            entry = s['hypo_entry_price']
+            stop = entry * 0.985
+            target10 = entry * 1.1
+            target20 = entry * 1.2
+            boosts = 'volume' if s['volume_boost'] else ''
+            writer.writerow([timestamp, date, s['symbol'], s['score'], s['gap_pct'], s['whale_premium'], '1H/4H', s['whale_type'], boosts, 'new', s['reason'], entry, stop, target10, target20, 1.5, '', '', '', '', '', '', '', '', ''])
+
+# (rest of the script remains the same as your original — check_rollovers, sector_rotation, backtest, scheduler)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
