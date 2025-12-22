@@ -111,6 +111,9 @@ def get_whale_premium(flow):
     return call_premium, whale_type
 
 async def fvg_whale_scan(verify_with_cheddar=True):
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    is_pre_market = now.hour < 8 or (now.hour == 8 and now.minute < 30)
+    whale_threshold = 50000 if is_pre_market else 100000  # $50k pre-market, $100k open
     setups = []
     for symbol in UNIVERSE:
         ohlc_data = await get_ohlc(symbol)
@@ -125,13 +128,13 @@ async def fvg_whale_scan(verify_with_cheddar=True):
         fvg4h, _, _ = detect_fvg(bars4h, min_gap)
         flow_data = await get_flow(symbol)
         whale, whale_type = get_whale_premium(flow_data)
-        if whale < 200000:
+        if whale < whale_threshold:
             continue
         volume_boost = has_volume_boost(bars)
         score = gap_pct * 1500 + whale / 10000 + (20 if volume_boost else 0)
         if score < 60:
             continue
-        reason = "Strong gap + whale confirmation — bounce potential 10-20%+" if score > 80 else "Decent setup with whale flow"
+        reason = "Strong gap + whale confirmation — bounce potential 10-20%+" if score > 80 else "Early whale flow — building conviction"
         setups.append({
             'symbol': symbol,
             'score': score,
@@ -146,9 +149,9 @@ async def fvg_whale_scan(verify_with_cheddar=True):
         })
     setups = sorted(setups, key=lambda x: x['score'], reverse=True)[:20]
     if not setups:
-        message = "No high-conviction FVGs this scan — waiting for whale/volume"
+        message = f"No high-conviction FVGs this scan (threshold ${whale_threshold:,}) — waiting for whale/volume"
     else:
-        message = "Top 20 FVG Setups (Detailed Analysis)\n\n"
+        message = f"Top 20 FVG Setups (Detailed Analysis) — {'Pre-Market' if is_pre_market else 'Regular Hours'}\n\n"
         for i, s in enumerate(setups, 1):
             boost_text = "Yes — conviction buying" if s['volume_boost'] else "No"
             entry = s['hypo_entry_price']
@@ -241,20 +244,8 @@ async def sector_rotation():
         call = sum(trade['premium'] for trade in flow_data or [] if trade.get('is_call'))
         put = sum(trade['premium'] for trade in flow_data or [] if not trade.get('is_call'))
         net = call - put
-        if abs(net) > 1000000:
+        if abs(net) > 300000:  # Early threshold
             shifts.append((etf, net))
-        # Negative FVG for sector rollover
-        ohlc_data = await get_ohlc(etf)
-        if not ohlc_data or 'bars' not in ohlc_data:
-            continue
-        bars = ohlc_data['bars']
-        neg_fvg1h, neg_gap_pct, _ = detect_fvg(bars, 0.05, positive=False)
-        bars4h = aggregate_to_4h(bars)
-        neg_fvg4h, _, _ = detect_fvg(bars4h, 0.05, positive=False)
-        if neg_fvg1h > 0 or neg_fvg4h > 0 or net < -1000000:
-            message = f"Sector Rollover Alert: {etf} showing outflow/negative FVGs (1H: {neg_fvg1h}, 4H: {neg_fvg4h}, net flow: ${net:,}). Rotate out — money leaving."
-            async with httpx.AsyncClient() as client:
-                await client.post(DISCORD_WEBHOOK, json={"content": message})
     if not shifts:
         return
     message = "Sector Rotation Detected:\n"
