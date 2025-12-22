@@ -134,12 +134,12 @@ def get_whale_premium(flow):
 async def get_macro_context():
     macro_symbols = {'^VIX': 'VIX', 'CL=F': 'Crude Oil', '^TNX': '10yr Yield', 'GC=F': 'Gold', 'SI=F': 'Silver', 'DX-Y.NYB': 'DXY'}
     context = "Macro Context: "
-    for sym, name in macro_symbols.items:
+    for sym, name in macro_symbols.items():
         data = await get_ohlc(sym)
         if data and 'bars' in data and data['bars']:
             close = data['bars'][-1]['close']
             context += f"{name} ${close:.2f} | "
-    return context.rstrip(" | ")
+    return context.rstrip(" | ") if context != "Macro Context: " else "Macro Context: N/A"
 
 async def darkpool_scan():
     major_symbols = ['SPY', 'QQQ', 'IWM', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN']
@@ -148,7 +148,7 @@ async def darkpool_scan():
         if not darkpool_data or 'data' not in darkpool_data:
             continue
         total_notional = sum(trade.get('price', 0) * trade.get('size', 0) for trade in darkpool_data['data'])
-        if total_notional > 50000000:  # $50M+ daily notional
+        if total_notional > 50000000:
             message = f"Dark Pool Accumulation Alert: {symbol} — ${total_notional:,.0f} notional today (bullish springboard potential)"
             await send_discord(message)
 
