@@ -112,6 +112,7 @@ def get_whale_premium(flow):
 
 async def fvg_whale_scan(verify_with_cheddar=True):
     now = datetime.now(ZoneInfo("America/Chicago"))
+    is_pre_market = now.hour < 8 or (now.hour == 8 and now.minute < 30)
     whale_threshold = 25000  # $25k all day for low-volume/holiday catch
     gap_threshold = 0.15
     setups = []
