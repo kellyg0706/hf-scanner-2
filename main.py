@@ -244,7 +244,7 @@ async def sector_rotation():
         call = sum(trade['premium'] for trade in flow_data or [] if trade.get('is_call'))
         put = sum(trade['premium'] for trade in flow_data or [] if not trade.get('is_call'))
         net = call - put
-        if abs(net) > 300000:  # Early threshold
+        if abs(net) > 300000:
             shifts.append((etf, net))
     if not shifts:
         return
