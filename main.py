@@ -114,16 +114,50 @@ def has_volume_boost(bars):
     return bars[-1]['volume'] > 1.5 * avg
 
 def get_whale_premium(flow_data):
+    if not flow_data or 'data' not in flow_data:
+        return 0, "No flow"
+
     premium = 0
-    has_otm_sweep = False
-    spot = flow_data.get('spot_price', 0) if flow_data else 0
-    for trade in flow_data.get('data', []) if flow_data else []:
-        if trade.get('is_call'):
-            premium += trade.get('premium', 0)
-            if trade.get('type') in ['sweep', 'block'] and trade.get('strike', 0) > spot:
-                has_otm_sweep = True
-    whale_type = " (OTM sweeps)" if has_otm_sweep else ""
-    return premium, whale_type
+    otm_sweep_count = 0
+    above_ask_count = 0
+    multi_ex_count = 0
+    total_trades = 0
+    spot = flow_data.get('spot_price', 0)
+
+    for trade in flow_data['data']:
+        if not trade.get('is_call'):
+            continue
+        total_trades += 1
+        premium += trade.get('premium', 0)
+
+        strike = trade.get('strike', 0)
+        if strike > spot * 1.01:  # OTM
+            if trade.get('type') in ['sweep', 'block']:
+                otm_sweep_count += 1
+
+        if trade.get('sent_at_ask') or trade.get('above_ask'):
+            above_ask_count += 1
+
+        ex = trade.get('exchange', '')
+        if isinstance(ex, str) and ',' in ex:
+            multi_ex_count += 1
+
+    # Cheddar-style confirmation
+    if premium > 100000 and otm_sweep_count >= 2 and above_ask_count >= 3:
+        confirm = "CONFIRMED BEAST — Cheddar-level aggression"
+    elif premium > 50000 and otm_sweep_count >= 1:
+        confirm = "Strong conviction — sweeps above ask"
+    elif premium > 25000:
+        confirm = "Flow building — monitor for aggression"
+    else:
+        confirm = "Light flow — no clear backing"
+
+    details = ""
+    if otm_sweep_count: details += f" | {otm_sweep_count} OTM sweeps"
+    if above_ask_count: details += f" | {above_ask_count} above ask"
+    if multi_ex_count: details += f" | {multi_ex_count} multi-ex"
+
+    return premium, confirm + details
 
 async def get_macro_context():
     context = "Macro Context: "
@@ -237,25 +271,25 @@ async def fvg_whale_scan():
             if not ohlc or len(ohlc['bars']) < 30: continue
             bars = ohlc['bars']
 
-            # Positive
+            # Positive FVG
             p1h, p_gap, p_entry = detect_fvg(bars, gap_thr, True)
             bars4h = aggregate_to_4h(bars)
             p4h, _, _ = detect_fvg(bars4h, gap_thr, True)
             if p1h > 0 or p4h > 0:
                 boost = has_volume_boost(bars)
                 flow = await get_flow(symbol)
-                premium, sweep = get_whale_premium(flow)
-                status = "WHALES ALL IN — JAY BE ALERT" if premium > 100000 else "Strong conviction" if premium > min_prem else "Monitor"
+                premium, confirm = get_whale_premium(flow)
                 owned = " ★OWNED★" if symbol in OWNED_STOCKS else ""
                 positives.append({
                     'sym': symbol, 'owned': owned, 'gap': p_gap, 'premium': premium,
-                    'boost': boost, 'status': status, 'sweep': sweep, 'entry': p_entry,
+                    'boost': boost, 'confirm': confirm, 'entry': p_entry,
                     'tf': f"1H:{p1h} 4H:{p4h}"
                 })
-                if premium > min_prem and boost and p_entry > 0 and symbol in OWNED_STOCKS or premium > 80000:
+                # Log high-conviction
+                if premium > min_prem and boost and p_entry > 0:
                     await log_new_signal(symbol, p_gap, premium, p_entry, f"1H:{p1h} 4H:{p4h}")
 
-            # Negative
+            # Negative FVG
             n1h, n_gap, _ = detect_fvg(bars, gap_thr, False)
             n4h, _, _ = detect_fvg(bars4h, gap_thr, False)
             if n1h > 0 or n4h > 0:
@@ -270,7 +304,10 @@ async def fvg_whale_scan():
         message += "**Bullish FVG Setups**\n\n"
         for p in sorted(positives, key=lambda x: x['premium'], reverse=True)[:20]:
             message += f"{p['sym']}{p['owned']} — {p['tf']} Gap {p['gap']:.2f}%\n"
-            message += f"${p['premium']:,}{p['sweep']} | {p['status']} | Boost: {'YES' if p['boost'] else 'no'}\n\n"
+            message += f"${p['premium']:,} call flow\n{p['confirm']}\n"
+            if p['boost']: message += "Volume boost: YES\n"
+            if p['entry'] > 0:
+                message += f"Entry ~${p['entry']:.2f} | Stop ${round(p['entry']*0.93,2):.2f} | T10 ${round(p['entry']*1.10,2):.2f} | T20 ${round(p['entry']*1.20,2):.2f}\n\n"
 
     if negatives:
         message += "**Bearish FVG — Rollover Risk**\n\n"
@@ -285,7 +322,7 @@ async def fvg_whale_scan():
     await sector_rotation()
 
 async def scheduler():
-    await send_discord("Beast scanner online. Hunting FVGs every 10min during market hours. 🦁🔥")
+    await send_discord("Beast scanner online — Cheddar-style flow confirmation active. Hunting every 10min. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
