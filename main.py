@@ -155,7 +155,7 @@ async def darkpool_scan():
                     message = f"Dark Pool Accumulation Alert: {symbol} — ${total_notional:,.0f} notional today (bullish springboard potential)"
                     await send_discord(message)
         except:
-            pass  # Silent skip on error
+            pass  # Silent skip
 
 async def fvg_whale_scan(verify_with_cheddar=True):
     now = datetime.now(ZoneInfo("America/Chicago"))
@@ -165,6 +165,7 @@ async def fvg_whale_scan(verify_with_cheddar=True):
     macro = await get_macro_context()
     positive_fvg_list = []
     negative_fvg_list = []
+    watch_list = []
     for symbol in UNIVERSE:
         ohlc_data = await get_ohlc(symbol)
         if not ohlc_data or 'bars' not in ohlc_data:
@@ -179,15 +180,27 @@ async def fvg_whale_scan(verify_with_cheddar=True):
             flow_data = await get_flow(symbol)
             call_premium, net_call, whale_type = get_whale_premium(flow_data)
             whale_status = "Whales ALL IN — JAY BE ALERT" if call_premium > 100000 else "Whales building — early conviction" if call_premium > 25000 else "Whales not committed yet — monitor"
-            positive_fvg_list.append({
-                'symbol': symbol,
-                'pos1h': pos1h,
-                'pos4h': pos4h,
-                'pos_gap': pos_gap,
-                'volume_boost': volume_boost,
-                'call_premium': call_premium,
-                'whale_status': whale_status
-            })
+            if call_premium >= whale_threshold:
+                positive_fvg_list.append({
+                    'symbol': symbol,
+                    'pos1h': pos1h,
+                    'pos4h': pos4h,
+                    'pos_gap': pos_gap,
+                    'volume_boost': volume_boost,
+                    'call_premium': call_premium,
+                    'whale_status': whale_status
+                })
+            else:
+                if volume_boost:
+                    watch_list.append({
+                        'symbol': symbol,
+                        'pos1h': pos1h,
+                        'pos4h': pos4h,
+                        'pos_gap': pos_gap,
+                        'volume_boost': volume_boost,
+                        'call_premium': call_premium,
+                        'whale_status': whale_status
+                    })
         # Negative FVGs
         neg1h, neg_gap, neg_entry = detect_fvg(bars, gap_threshold, positive=False)
         neg4h, _, _ = detect_fvg(bars4h, gap_threshold, positive=False)
@@ -201,19 +214,26 @@ async def fvg_whale_scan(verify_with_cheddar=True):
     # Alerts
     message = f"{macro}\n\n"
     if positive_fvg_list:
-        message += "Positive FVG Detected (1H/4H)\n\n"
+        message += "High Conviction Positive FVG Detected (1H/4H)\n\n"
         for f in sorted(positive_fvg_list, key=lambda x: x['call_premium'], reverse=True)[:20]:
             boost_text = "Yes — conviction buying" if f['volume_boost'] else "No"
             message += f"{f['symbol']} — Positive FVG (1H: {f['pos1h']}, 4H: {f['pos4h']}, gap {f['pos_gap']:.2f}%)\n"
             message += f"Volume Boost: {boost_text}\n"
             message += f"Whale Status: {f['whale_status']} (${f['call_premium']:,} call premium)\n\n"
+    if watch_list:
+        message += "FVG Watch List (Strong Gaps — Building Whale Flow, Monitor)\n\n"
+        for w in sorted(watch_list, key=lambda x: x['pos_gap'], reverse=True)[:20]:
+            boost_text = "Yes — conviction buying" if w['volume_boost'] else "No"
+            message += f"{w['symbol']} — Positive FVG (1H: {w['pos1h']}, 4H: {w['pos4h']}, gap {w['pos_gap']:.2f}%)\n"
+            message += f"Volume Boost: {boost_text}\n"
+            message += f"Whale Status: {w['whale_status']} (${w['call_premium']:,} call premium)\n\n"
     if negative_fvg_list:
         message += "Negative FVG Detected (1H/4H) — Potential Rollover\n\n"
         for f in sorted(negative_fvg_list, key=lambda x: x['neg_gap'], reverse=True)[:20]:
             message += f"{f['symbol']} — Negative FVG (1H: {f['neg1h']}, 4H: {f['neg4h']}, gap {f['neg_gap']:.2f}%)\n"
             message += "Consider exit or take profits — money leaving\n\n"
-    if not positive_fvg_list and not negative_fvg_list:
-        message += "No positive or negative FVGs this scan — waiting for gaps/volume\n"
+    if not positive_fvg_list and not watch_list and not negative_fvg_list:
+        message += "No FVGs or watch list this scan — waiting for gaps/volume\n"
     await send_discord(message)
     await darkpool_scan()
 
