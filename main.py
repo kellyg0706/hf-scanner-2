@@ -111,81 +111,63 @@ def get_whale_premium(flow):
     return call_premium, whale_type
 
 async def fvg_whale_scan(verify_with_cheddar=True):
-    now = datetime.now(ZoneInfo("America/Chicago"))
-    is_pre_market = now.hour < 8 or (now.hour == 8 and now.minute < 30)
-    whale_threshold = 25000 if is_pre_market else 75000
-    gap_threshold = 0.15 if is_pre_market else 0.18
-    setups = []
+    whale_threshold = 10000  # $10k all day for holiday low-volume
+    gap_threshold = 0.12
+    positive_fvg_list = []
+    negative_fvg_list = []
     for symbol in UNIVERSE:
         ohlc_data = await get_ohlc(symbol)
         if not ohlc_data or 'bars' not in ohlc_data:
             continue
         bars = ohlc_data['bars']
-        fvg1h, gap_pct, hypo_entry = detect_fvg(bars, gap_threshold)
-        if gap_pct < gap_threshold:
-            continue
+        # Positive FVGs
+        pos1h, pos_gap, pos_entry = detect_fvg(bars, gap_threshold, positive=True)
         bars4h = aggregate_to_4h(bars)
-        fvg4h, _, _ = detect_fvg(bars4h, gap_threshold)
-        flow_data = await get_flow(symbol)
-        whale, whale_type = get_whale_premium(flow_data)
-        if whale < whale_threshold:
-            continue
-        volume_boost = has_volume_boost(bars)
-        score = gap_pct * 1500 + whale / 10000 + (20 if volume_boost else 0)
-        if score < 60:
-            continue
-        reason = "Early Conviction FVG — building whale flow" if is_pre_market else "High Conviction Confirmed — whale step-in"
-        setups.append({
-            'symbol': symbol,
-            'score': score,
-            'gap_pct': gap_pct,
-            'whale_premium': whale,
-            'fvg1h': fvg1h,
-            'fvg4h': fvg4h,
-            'whale_type': whale_type,
-            'volume_boost': volume_boost,
-            'hypo_entry_price': hypo_entry,
-            'reason': reason
-        })
-    setups = sorted(setups, key=lambda x: x['score'], reverse=True)[:20]
-    if not setups:
-        message = f"No high-conviction FVGs this scan (threshold ${whale_threshold:,}) — waiting for whale/volume"
-    else:
-        message = f"Top 20 FVG Setups (Detailed Analysis) — {'Pre-Market' if is_pre_market else 'Regular Hours'}\n\n"
-        for i, s in enumerate(setups, 1):
-            boost_text = "Yes — conviction buying" if s['volume_boost'] else "No"
-            entry = s['hypo_entry_price']
-            stop = entry * 0.985
-            target10 = entry * 1.1
-            target20 = entry * 1.2
-            sizing = "Full Position (80+ score)" if s['score'] > 80 else "Medium Position (70-80)" if s['score'] > 70 else "Small Position (60-70)"
-            message += f"{i}. {s['symbol']} - Score {s['score']:.1f} — {sizing}\n"
-            message += f"FVG Structure: {s['fvg1h']} positive on 1H, {s['fvg4h']} on 4H — bullish gaps holding as support\n"
-            message += f"Whale Premium: ${s['whale_premium']:,} in call flow ({s['whale_type']})\n"
+        pos4h, _, _ = detect_fvg(bars4h, gap_threshold, positive=True)
+        if pos1h > 0 or pos4h > 0:
+            volume_boost = has_volume_boost(bars)
+            flow_data = await get_flow(symbol)
+            call_premium, net_call, whale_type = get_whale_premium(flow_data)
+            whale_status = "Whales ALL IN — JAY BE ALERT" if call_premium > 100000 else "Whales building — early conviction" if call_premium > 25000 else "Whales not committed yet — monitor"
+            positive_fvg_list.append({
+                'symbol': symbol,
+                'pos1h': pos1h,
+                'pos4h': pos4h,
+                'pos_gap': pos_gap,
+                'volume_boost': volume_boost,
+                'call_premium': call_premium,
+                'whale_status': whale_status
+            })
+        # Negative FVGs
+        neg1h, neg_gap, neg_entry = detect_fvg(bars, gap_threshold, positive=False)
+        neg4h, _, _ = detect_fvg(bars4h, gap_threshold, positive=False)
+        if neg1h > 0 or neg4h > 0:
+            negative_fvg_list.append({
+                'symbol': symbol,
+                'neg1h': neg1h,
+                'neg4h': neg4h,
+                'neg_gap': neg_gap
+            })
+    # Positive FVGs Alert
+    if positive_fvg_list:
+        message = "Positive FVG Detected (1H/4H)\n\n"
+        for f in sorted(positive_fvg_list, key=lambda x: x['call_premium'], reverse=True)[:20]:
+            boost_text = "Yes — conviction buying" if f['volume_boost'] else "No"
+            message += f"{f['symbol']} — Positive FVG (1H: {f['pos1h']}, 4H: {f['pos4h']}, gap {f['pos_gap']:.2f}%)\n"
             message += f"Volume Boost: {boost_text}\n"
-            message += f"Why #{i}: {s['reason']}\n"
-            message += f"Entry ~${entry:,.0f} | Stop ${stop:,.0f} (1.5%) | Target 10% ${target10:,.0f} | 20% ${target20:,.0f}\n"
-            if verify_with_cheddar:
-                message += f"Verification: Cross-check Cheddar Flow for similar call sweeps on {s['symbol']} – log in or search 'unusual options activity {s['symbol']} Cheddar Flow'\n\n"
-            else:
-                message += "\n"
-    async with httpx.AsyncClient() as client:
-        try:
-            await client.post(DISCORD_WEBHOOK, json={"content": message})
-            print("Alert sent to Discord")
-        except Exception as e:
-            print(f"Discord send error: {e}")
-    timestamp = datetime.now().isoformat()
-    date = datetime.now().date()
-    with open('signals.csv', 'a', newline='') as f:
-        writer = csv.writer(f)
-        for s in setups:
-            entry = s['hypo_entry_price']
-            stop = entry * 0.985
-            target10 = entry * 1.1
-            target20 = entry * 1.2
-            boosts = 'volume' if s['volume_boost'] else ''
-            writer.writerow([timestamp, date, s['symbol'], s['score'], s['gap_pct'], s['whale_premium'], '1H/4H', s['whale_type'], boosts, 'new', s['reason'], entry, stop, target10, target20, 1.5, '', '', '', '', '', '', '', '', ''])
+            message += f"Whale Status: {f['whale_status']} (${f['call_premium']:,} call premium)\n\n"
+        await send_discord(message)
+    # Negative FVGs Alert
+    if negative_fvg_list:
+        message = "Negative FVG Detected (1H/4H) — Potential Rollover\n\n"
+        for f in sorted(negative_fvg_list, key=lambda x: x['neg_gap'], reverse=True)[:20]:
+            message += f"{f['symbol']} — Negative FVG (1H: {f['neg1h']}, 4H: {f['neg4h']}, gap {f['neg_gap']:.2f}%)\n"
+            message += "Consider exit or take profits — money leaving\n\n"
+        await send_discord(message)
+    # If no FVGs
+    if not positive_fvg_list and not negative_fvg_list:
+        message = "No positive or negative FVGs this scan — waiting for gaps/volume"
+        await send_discord(message)
 
 async def check_rollovers():
     df = pd.read_csv('signals.csv')
