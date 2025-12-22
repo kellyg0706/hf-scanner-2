@@ -276,11 +276,11 @@ async def backtest(days: int = 7):
 async def scheduler():
     while True:
         now = datetime.now(ZoneInfo("America/Chicago"))
-        if 3 <= now.hour < 15 and now.weekday() < 5:  # 3 AM - 3 PM CST, Monday-Friday
+        if 3 <= now.hour < 15 and now.weekday() < 5:
             await fvg_whale_scan()
             await check_rollovers()
             await sector_rotation()
-        await asyncio.sleep(1800)  # 30 minutes
+        await asyncio.sleep(1800)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
