@@ -113,7 +113,7 @@ def get_whale_premium(flow):
 async def fvg_whale_scan(verify_with_cheddar=True):
     now = datetime.now(ZoneInfo("America/Chicago"))
     whale_threshold = 25000  # $25k all day for low-volume/holiday catch
-    gap_threshold = 0.15  # Looser gap for early FVGs
+    gap_threshold = 0.15
     setups = []
     for symbol in UNIVERSE:
         ohlc_data = await get_ohlc(symbol)
