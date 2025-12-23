@@ -84,7 +84,7 @@ async def get_insider_activity():
                 sym = trade.get('ticker')
                 if sym not in UNIVERSE: continue
                 value = trade.get('value_usd', 0)
-                if abs(value) < 500000: continue  # only significant
+                if abs(value) < 500000: continue
                 filer = trade.get('filer_name', 'Insider')
                 trans_type = "BUY" if value > 0 else "SELL"
                 amount = f"${abs(value):,.0f}"
@@ -93,7 +93,7 @@ async def get_insider_activity():
                 msg = "**Daily Insider Edge**\n\n" + "\n".join(alerts[:12])
                 await send_discord(msg)
         except Exception:
-            pass  # silent if endpoint not available or error
+            pass
 
 def detect_fvg(bars, min_gap_pct: float, positive: bool = True):
     if len(bars) < 3: return 0, 0.0, 0.0
@@ -165,13 +165,13 @@ def get_whale_premium(flow_data):
 
         if is_call:
             premium_call += prem
-            if strike > spot * 1.02:  # 2%+ OTM call
+            if strike > spot * 1.02:
                 otm_call_prem += prem
                 if trade.get('type') in ['sweep', 'block']:
                     otm_sweep_count += 1
         else:
             premium_put += prem
-            if strike < spot * 0.98:  # 2%+ OTM put
+            if strike < spot * 0.98:
                 otm_put_prem += prem
 
         if trade.get('sent_at_ask') or trade.get('above_ask'):
@@ -183,7 +183,6 @@ def get_whale_premium(flow_data):
 
     total_premium = premium_call
 
-    # Cheddar confirmation
     if total_premium > 100000 and otm_sweep_count >= 2 and above_ask_count >= 3:
         confirm = "CONFIRMED BEAST — Cheddar-level aggression"
     elif total_premium > 50000 and otm_sweep_count >= 1:
@@ -198,7 +197,6 @@ def get_whale_premium(flow_data):
     if above_ask_count: details += f" | {above_ask_count} above ask"
     if multi_ex_count: details += f" | {multi_ex_count} multi-ex"
 
-    # GEX Proxy
     gex_tag = ""
     if otm_call_prem > 100000:
         gex_tag = " | GAMMA WALL BUILDING ABOVE (positive GEX)"
@@ -210,8 +208,9 @@ def get_whale_premium(flow_data):
 async def get_vix_context():
     vix_data = await get_ohlc('^VIX')
     if not vix_data or len(vix_data['bars']) < 2: return ""
-    today = vix_data['bars'][-1]['close']
-    yesterday = vix_data['bars'][-2]['close']
+    today = vix_data['bars'][-1].get('close')
+    yesterday = vix_data['bars'][-2].get('close')
+    if today is None or yesterday is None: return ""
     change = (today - yesterday) / yesterday * 100
     if change < -5:
         return f" | VIX CRUSH {change:.1f}% — RISK ON GAMMA SQUEEZE POTENTIAL"
@@ -224,9 +223,12 @@ async def get_macro_context():
     symbols = {'^VIX': 'VIX', 'CL=F': 'Oil', '^TNX': '10yr', 'GC=F': 'Gold', 'SI=F': 'Silver', 'DX-Y.NYB': 'DXY'}
     for sym, name in symbols.items():
         data = await get_ohlc(sym)
-        if data and data['bars']:
-            close = data['bars'][-1]['close']
-            context += f"{name} ${close:.2f} | "
+        if data and data['bars'] and len(data['bars']) > 0:
+            close = data['bars'][-1].get('close')
+            if close is not None:
+                context += f"{name} ${close:.2f} | "
+            else:
+                context += f"{name} N/A | "
         else:
             context += f"{name} N/A | "
     return context.rstrip(" | ")
@@ -420,19 +422,33 @@ async def fvg_whale_scan():
     await sector_rotation()
 
 async def scheduler():
-    await send_discord("MASTERPIECE BEAST ONLINE — Insider + gamma + all upgrades active. Legends on notice. 🦁🔥")
+    await send_discord("BEAST ONLINE — Pre-market every 30min | Regular hours every 10min | All upgrades active. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
-            if 3 <= now.hour < 15 and now.weekday() < 5:
-                await fvg_whale_scan()
-                await daily_pre_market_summary()
-                await check_rollovers()
-                if now.hour == 9 and now.minute < 10:  # once daily after open
-                    await get_insider_activity()
+            hour = now.hour
+            minute = now.minute
+
+            # Pre-market: 3:00–8:30 CT → every 30 minutes
+            if 3 <= hour < 8 or (hour == 8 and minute < 30):
+                if minute in [0, 30]:
+                    await fvg_whale_scan()
+                    await daily_pre_market_summary()
+                    await check_rollovers()
+
+            # Regular hours: 8:30–15:00 CT → every 10 minutes
+            elif 8 <= hour < 15:
+                if minute % 10 == 0:
+                    await fvg_whale_scan()
+                    await daily_pre_market_summary()
+                    await check_rollovers()
+                    if hour == 9 and minute == 0:
+                        await get_insider_activity()
+
         except Exception as e:
             await send_discord(f"Scanner error: {str(e)}")
-        await asyncio.sleep(600)
+
+        await asyncio.sleep(60)  # check every minute
 
 @app.get("/backtest")
 async def backtest(days: int = 7):
