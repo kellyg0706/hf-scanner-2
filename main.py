@@ -11,11 +11,11 @@ import threading
 
 app = FastAPI()
 
-# Env vars
+# Environment variables
 UW_API_KEY = os.environ.get('UW_API_KEY')
 DISCORD_WEBHOOK = os.environ.get('DISCORD_WEBHOOK')
 if not UW_API_KEY or not DISCORD_WEBHOOK:
-    raise RuntimeError("Set UW_API_KEY and DISCORD_WEBHOOK")
+    raise RuntimeError("Please set UW_API_KEY and DISCORD_WEBHOOK environment variables.")
 
 BASE_URL = "https://api.unusualwhales.com/api"
 HEADERS = {"Authorization": f"Bearer {UW_API_KEY}"}
@@ -72,6 +72,28 @@ async def get_darkpool(symbol: str):
             return resp.json()
         except Exception:
             return None
+
+async def get_insider_activity():
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{BASE_URL}/insider-trading/recent", params={"limit": 100}, headers=HEADERS, timeout=20.0)
+            resp.raise_for_status()
+            data = resp.json().get('data', [])
+            alerts = []
+            for trade in data:
+                sym = trade.get('ticker')
+                if sym not in UNIVERSE: continue
+                value = trade.get('value_usd', 0)
+                if abs(value) < 500000: continue  # only significant
+                filer = trade.get('filer_name', 'Insider')
+                trans_type = "BUY" if value > 0 else "SELL"
+                amount = f"${abs(value):,.0f}"
+                alerts.append(f"{sym} — {filer} {trans_type} {amount}")
+            if alerts:
+                msg = "**Daily Insider Edge**\n\n" + "\n".join(alerts[:12])
+                await send_discord(msg)
+        except Exception:
+            pass  # silent if endpoint not available or error
 
 def detect_fvg(bars, min_gap_pct: float, positive: bool = True):
     if len(bars) < 3: return 0, 0.0, 0.0
@@ -260,7 +282,7 @@ async def get_top_pre_market_movers():
 
 async def daily_pre_market_summary():
     now = datetime.now(ZoneInfo("America/Chicago"))
-    if now.hour == 8 and 30 <= now.minute < 35:  # 8:30–8:35 CT
+    if now.hour == 8 and 30 <= now.minute < 35:
         movers = await get_top_pre_market_movers()
         if movers:
             msg = "**Pre-Market Battlefield — Top Movers**\n\n"
@@ -398,7 +420,7 @@ async def fvg_whale_scan():
     await sector_rotation()
 
 async def scheduler():
-    await send_discord("MASTERPIECE BEAST ONLINE — Gamma exposure proxy active. Legends on notice. 🦁🔥")
+    await send_discord("MASTERPIECE BEAST ONLINE — Insider + gamma + all upgrades active. Legends on notice. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
@@ -406,6 +428,8 @@ async def scheduler():
                 await fvg_whale_scan()
                 await daily_pre_market_summary()
                 await check_rollovers()
+                if now.hour == 9 and now.minute < 10:  # once daily after open
+                    await get_insider_activity()
         except Exception as e:
             await send_discord(f"Scanner error: {str(e)}")
         await asyncio.sleep(600)
