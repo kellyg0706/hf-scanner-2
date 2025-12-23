@@ -31,7 +31,7 @@ UNIVERSE = list(set(SP500 + DOW + NASDAQ100 + RUSSELL_TOP100 + ETF_LIST + ['COIN
 OWNED_STOCKS = ['ALAB', 'AMD', 'AVGO', 'COIN', 'CRDO', 'CRM', 'CRWD', 'GOOGL', 'IWM', 'LLY', 'META', 'MRVL', 'MU', 'NVDA', 'QCOM', 'SMCI', 'TSLA', 'TSM']
 
 # Your Personal Sniper List — scanned first + bold in alerts
-SNIPER_LIST = OWNED_STOCKS + ['SPY', 'QQQ', 'MSTR', 'HOOD', 'PLTR', 'APP', 'HOOD']  # add/remove as you want
+SNIPER_LIST = OWNED_STOCKS + ['SPY', 'QQQ', 'MSTR', 'HOOD', 'PLTR', 'APP']
 
 CSV_FILE = 'signals.csv'
 CSV_HEADERS = ['timestamp','date','symbol','score','gap_pct','whale_premium','fvg_timeframe','whale_type','boosts','status','reason',
@@ -125,22 +125,32 @@ def has_pre_market_surge(bars):
 
 def get_whale_premium(flow_data):
     if not flow_data or 'data' not in flow_data:
-        return 0, "No flow"
+        return 0, "No flow", ""
 
-    premium = 0
+    premium_call = 0
+    premium_put = 0
+    otm_call_prem = 0
+    otm_put_prem = 0
     otm_sweep_count = 0
     above_ask_count = 0
     multi_ex_count = 0
     spot = flow_data.get('spot_price', 0)
 
     for trade in flow_data['data']:
-        if not trade.get('is_call'): continue
-        premium += trade.get('premium', 0)
-
+        prem = trade.get('premium', 0)
         strike = trade.get('strike', 0)
-        if strike > spot * 1.01:
-            if trade.get('type') in ['sweep', 'block']:
-                otm_sweep_count += 1
+        is_call = trade.get('is_call')
+
+        if is_call:
+            premium_call += prem
+            if strike > spot * 1.02:  # 2%+ OTM call
+                otm_call_prem += prem
+                if trade.get('type') in ['sweep', 'block']:
+                    otm_sweep_count += 1
+        else:
+            premium_put += prem
+            if strike < spot * 0.98:  # 2%+ OTM put
+                otm_put_prem += prem
 
         if trade.get('sent_at_ask') or trade.get('above_ask'):
             above_ask_count += 1
@@ -149,21 +159,31 @@ def get_whale_premium(flow_data):
         if isinstance(ex, str) and ',' in ex:
             multi_ex_count += 1
 
-    if premium > 100000 and otm_sweep_count >= 2 and above_ask_count >= 3:
+    total_premium = premium_call
+
+    # Cheddar confirmation
+    if total_premium > 100000 and otm_sweep_count >= 2 and above_ask_count >= 3:
         confirm = "CONFIRMED BEAST — Cheddar-level aggression"
-    elif premium > 50000 and otm_sweep_count >= 1:
+    elif total_premium > 50000 and otm_sweep_count >= 1:
         confirm = "Strong conviction — sweeps above ask"
-    elif premium > 25000:
-        confirm = "Flow building — monitor for aggression"
+    elif total_premium > 25000:
+        confirm = "Flow building — monitor"
     else:
-        confirm = "Light flow — no clear backing"
+        confirm = "Light flow"
 
     details = ""
     if otm_sweep_count: details += f" | {otm_sweep_count} OTM sweeps"
     if above_ask_count: details += f" | {above_ask_count} above ask"
     if multi_ex_count: details += f" | {multi_ex_count} multi-ex"
 
-    return premium, confirm + details
+    # GEX Proxy
+    gex_tag = ""
+    if otm_call_prem > 100000:
+        gex_tag = " | GAMMA WALL BUILDING ABOVE (positive GEX)"
+    elif otm_put_prem > 100000:
+        gex_tag = " | NEGATIVE GEX RISK BELOW (dealers short gamma)"
+
+    return total_premium, confirm + details + gex_tag
 
 async def get_vix_context():
     vix_data = await get_ohlc('^VIX')
@@ -240,7 +260,7 @@ async def get_top_pre_market_movers():
 
 async def daily_pre_market_summary():
     now = datetime.now(ZoneInfo("America/Chicago"))
-    if now.hour == 8 and 30 <= now.minute < 35:  # 8:30–8:35 CT (pre-open)
+    if now.hour == 8 and 30 <= now.minute < 35:  # 8:30–8:35 CT
         movers = await get_top_pre_market_movers()
         if movers:
             msg = "**Pre-Market Battlefield — Top Movers**\n\n"
@@ -317,7 +337,6 @@ async def fvg_whale_scan():
     positives = []
     negatives = []
 
-    # Scan order: Sniper List first
     scan_order = SNIPER_LIST + [s for s in UNIVERSE if s not in SNIPER_LIST]
 
     for symbol in scan_order:
@@ -328,7 +347,6 @@ async def fvg_whale_scan():
 
             pre_surge = has_pre_market_surge(bars)
 
-            # Positive FVG
             p1h, p_gap, p_entry = detect_fvg(bars, gap_thr, True)
             bars4h = aggregate_to_4h(bars)
             p4h, _, _ = detect_fvg(bars4h, gap_thr, True)
@@ -348,7 +366,6 @@ async def fvg_whale_scan():
                 if premium > min_prem and (boost or pre_surge):
                     await log_new_signal(symbol, p_gap, premium, p_entry, f"1H:{p1h} 4H:{p4h}")
 
-            # Negative FVG
             n1h, n_gap, _ = detect_fvg(bars, gap_thr, False)
             n4h, _, _ = detect_fvg(bars4h, gap_thr, False)
             if n1h > 0 or n4h > 0:
@@ -381,11 +398,11 @@ async def fvg_whale_scan():
     await sector_rotation()
 
 async def scheduler():
-    await send_discord("FINAL BEAST ONLINE — All 6 upgrades active. Soros is nervous. Druckenmiller wants your number. Bessent needs an autograph. 🦁🔥")
+    await send_discord("MASTERPIECE BEAST ONLINE — Gamma exposure proxy active. Legends on notice. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
-            if 3 <= now.hour < 15 and now.weekday() < 5:  # 3AM – 3PM CT
+            if 3 <= now.hour < 15 and now.weekday() < 5:
                 await fvg_whale_scan()
                 await daily_pre_market_summary()
                 await check_rollovers()
