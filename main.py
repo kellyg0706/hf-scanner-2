@@ -13,10 +13,12 @@ app = FastAPI()
 
 # Environment variables
 UW_API_KEY = os.environ.get('UW_API_KEY')
-MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY')  # Optional for better pre-market macro
+MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY')  # Your Polygon / Massive API key
 DISCORD_WEBHOOK = os.environ.get('DISCORD_WEBHOOK')
 if not UW_API_KEY or not DISCORD_WEBHOOK:
     raise RuntimeError("Please set UW_API_KEY and DISCORD_WEBHOOK environment variables.")
+if not MASSIVE_API_KEY:
+    print("Warning: MASSIVE_API_KEY not set — macro pre-market data will fallback to UW (may show N/A)")
 
 BASE_URL = "https://api.unusualwhales.com/api"
 HEADERS = {"Authorization": f"Bearer {UW_API_KEY}"}
@@ -257,6 +259,26 @@ async def send_discord(message: str):
         except Exception:
             pass
 
+async def macro_pulse():
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    macro = await get_macro_context()
+    vix_change = ""
+    vix_data = await get_ohlc('^VIX')
+    if vix_data and len(vix_data['bars']) > 1:
+        today = vix_data['bars'][-1].get('close')
+        yesterday = vix_data['bars'][-2].get('close')
+        if today and yesterday:
+            change = (today - yesterday) / yesterday * 100
+            vix_change = f" ({change:+.1f}%)"
+            if change < -3:
+                vix_change += " — RISK ON CRUSH"
+            elif change > 3:
+                vix_change += " — RISK OFF"
+    msg = f"**Live Macro Pulse — {now.strftime('%H:%M CT')}**\n\n"
+    msg += macro + vix_change + "\n\n"
+    msg += "Market bias: Low VIX = premium decay / grind plays"
+    await send_discord(msg)
+
 async def darkpool_scan():
     majors = ['SPY', 'QQQ', 'IWM', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN']
     alerts = []
@@ -438,12 +460,16 @@ async def fvg_whale_scan():
     await sector_rotation()
 
 async def scheduler():
-    await send_discord("BEAST ONLINE — Massive API macro live | 3:00–8:30 CT every 30min | 8:30–15:00 CT every 10min | All upgrades active. 🦁🔥")
+    await send_discord("BEAST ONLINE — Massive API macro live | 3:00–8:30 CT every 30min | 8:30–15:00 CT every 10min | Macro pulse every hour | All upgrades active. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
             hour = now.hour
             minute = now.minute
+
+            # Macro pulse every hour on the hour
+            if minute == 0:
+                await macro_pulse()
 
             # Pre-market: 3:00–8:30 CT → every 30 minutes
             if 3 <= hour < 8 or (hour == 8 and minute < 30):
