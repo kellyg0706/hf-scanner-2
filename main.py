@@ -259,25 +259,7 @@ async def send_discord(message: str):
         except Exception:
             pass
 
-async def macro_pulse():
-    now = datetime.now(ZoneInfo("America/Chicago"))
-    macro = await get_macro_context()
-    vix_change = ""
-    vix_data = await get_ohlc('^VIX')
-    if vix_data and len(vix_data['bars']) > 1:
-        today = vix_data['bars'][-1].get('close')
-        yesterday = vix_data['bars'][-2].get('close')
-        if today and yesterday:
-            change = (today - yesterday) / yesterday * 100
-            vix_change = f" ({change:+.1f}%)"
-            if change < -3:
-                vix_change += " — RISK ON CRUSH"
-            elif change > 3:
-                vix_change += " — RISK OFF"
-    msg = f"**Live Macro Pulse — {now.strftime('%H:%M CT')}**\n\n"
-    msg += macro + vix_change + "\n\n"
-    msg += "Market bias: Low VIX = premium decay / grind plays"
-    await send_discord(msg)
+sector_daily_flow = {}
 
 async def darkpool_scan():
     majors = ['SPY', 'QQQ', 'IWM', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN']
@@ -292,6 +274,7 @@ async def darkpool_scan():
         await send_discord("\n".join(alerts))
 
 async def sector_rotation():
+    global sector_daily_flow
     alerts = []
     for etf in ETF_LIST:
         flow = await get_flow(etf)
@@ -299,11 +282,26 @@ async def sector_rotation():
         call = sum(t.get('premium', 0) for t in flow.get('data', []) if t.get('is_call'))
         put = sum(t.get('premium', 0) for t in flow.get('data', []) if not t.get('is_call'))
         net = call - put
-        if abs(net) > 300_000:
+        sector_daily_flow[etf] = sector_daily_flow.get(etf, 0) + net
+        if abs(net) > 200_000:  # Lowered to $200K for better sensitivity
             dir = "→ CALL HEAVY" if net > 0 else "← PUT HEAVY"
             alerts.append(f"{etf} {dir} ${abs(net):,.0f}")
     if alerts:
         await send_discord("Sector Rotation Flow:\n" + "\n".join(alerts))
+
+    # EOD recap
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    if now.hour == 15 and now.minute < 5:
+        if sector_daily_flow:
+            sorted_flow = sorted(sector_daily_flow.items(), key=lambda x: x[1], reverse=True)
+            msg = "**Daily Sector Flow Recap**\n\nTop Inflows:\n"
+            for etf, net in sorted_flow[:3]:
+                if net > 0: msg += f"{etf} +${net:,.0f}\n"
+            msg += "\nTop Outflows:\n"
+            for etf, net in sorted_flow[-3:]:
+                if net < 0: msg += f"{etf} ${net:,.0f}\n"
+            await send_discord(msg)
+        sector_daily_flow = {}  # reset
 
 async def get_top_pre_market_movers():
     movers = []
@@ -459,15 +457,35 @@ async def fvg_whale_scan():
     await darkpool_scan()
     await sector_rotation()
 
+async def macro_pulse():
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    macro = await get_macro_context()
+    vix_change = ""
+    vix_data = await get_ohlc('^VIX')
+    if vix_data and len(vix_data['bars']) > 1:
+        today = vix_data['bars'][-1].get('close')
+        yesterday = vix_data['bars'][-2].get('close')
+        if today and yesterday:
+            change = (today - yesterday) / yesterday * 100
+            vix_change = f" ({change:+.1f}%)"
+            if change < -3:
+                vix_change += " — RISK ON CRUSH"
+            elif change > 3:
+                vix_change += " — RISK OFF"
+    msg = f"**Live Macro Pulse — {now.strftime('%H:%M CT')}**\n\n"
+    msg += macro + vix_change + "\n\n"
+    msg += "Market bias: Low VIX = premium decay / grind plays"
+    await send_discord(msg)
+
 async def scheduler():
-    await send_discord("BEAST ONLINE — Massive API macro live | 3:00–8:30 CT every 30min | 8:30–15:00 CT every 10min | Macro pulse every hour | All upgrades active. 🦁🔥")
+    await send_discord("BEAST ONLINE — Live macro pulse every hour | Full scans on schedule | All upgrades active. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
             hour = now.hour
             minute = now.minute
 
-            # Macro pulse every hour on the hour
+            # Macro pulse every hour
             if minute == 0:
                 await macro_pulse()
 
