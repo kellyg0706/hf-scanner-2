@@ -13,7 +13,6 @@ app = FastAPI()
 
 # Environment variables
 UW_API_KEY = os.environ.get('UW_API_KEY')
-MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY')
 DISCORD_WEBHOOK = os.environ.get('DISCORD_WEBHOOK')
 if not UW_API_KEY or not DISCORD_WEBHOOK:
     raise RuntimeError("Please set UW_API_KEY and DISCORD_WEBHOOK environment variables.")
@@ -21,7 +20,7 @@ if not UW_API_KEY or not DISCORD_WEBHOOK:
 BASE_URL = "https://api.unusualwhales.com/api"
 HEADERS = {"Authorization": f"Bearer {UW_API_KEY}"}
 
-# Full Universe
+# Full Universe (same as before)
 SP500 = "NVDA,AAPL,GOOG,GOOGL,MSFT,AMZN,META,AVGO,TSLA,BRK.B,LLY,WMT,JPM,V,ORCL,MA,JNJ,XOM,PLTR,NFLX,BAC,ABBV,COST,AMD,HD,PG,GE,CSCO,KO,MU,CVX,UNH,WFC,IBM,MS,GS,CAT,AXP,MRK,PM,RTX,APP,CRM,MCD,TMUS,ABT,LRCX,TMO,C,PEP,AMAT,ISRG,DIS,LIN,INTU,BX,QCOM,GEV,AMGN,INTC,SCHW,BKNG,BLK,TJX,T,VZ,ACN,NEE,APH,ANET,UBER,KLAC,BA,NOW,TXN,DHR,SPGI,COF,GILD,ADBE,PFE,BSX,UNP,SYK,LOW,ADI,PGR,PANW,WELL,DE,MDT,HON,ETN,CB,CRWD,PLD,KKR,VRTX,COP,CEG,PH,NEM,BMY,LMT,HOOD,HCA,CMCSA,ADP,MCK,DASH,SBUX,CVS,MO,CME,SO,GD,ICE,MMC,DUK,MCO,SNPS,WM,NKE,UPS,TT,MMM,CDNS,APO,USB,DELL,MAR,PNC,ABNB,HWM,NOC,BK,AMT,RCL,SHW,REGN,GM,ORLY,ELV,GLW,AON,CTAS,EMR,ECL,MNST,EQIX,JCI,CI,ITW,TDG,WMB,FCX,MDLZ,SPG,WBD,CSX,HLT,FDX,TEL,COR,COIN,RSG,NSC,TRV,AJG,STX,TFC,PWR,ADSK,CL,WDC,MSI,AEP,FTNT,ROST,KMI,PCAR,AFL,WDAY,NXPI,SRE,AZO,PYPL,IDXX,BDX,EOG,VST,NDAQ,ARES,ZTS,LHX,MET,F,ALL,APD,DLR,O,PSX,URI,EA,D,MPC,CMG,EW,VLO,DDOG,GWW,FAST,CAH,ROP,CBRE,AXON,AME,AIG,DAL,TTWO,PSA,AMP,CARR,LVS,OKE,MPWR,CTVA,TGT,BKR,EXC,XEL,DHI,MSCI,YUM,FANG,TKO,FICO,ETR,CTSH,CCL,PAYX,PRU,PEG,KR,OXY,EL,A,GRMN,HIG,VMC,TRGP,HSY,EBAY,MLM,KDP,CPRT,GEHC,IQV,CCI,VTR,WAB,UAL,NUE,RMD,SYY,EXPE,ED,MCHP,ACGL,KEYS,PCG,FIS,OTIS,WEC,EQT,XYL,KMB,ODFL,KVUE,HPE,RJF,FOXA,WTW,MTB,FITB,IR,HUM,TER,VRSK,DG,FOX,NRG,CHTR,VICI,KHC,ROL,EXR,MTD,FSLR,IBKR,ADM,HBAN,CSGP,BRO,EME,TSCO,ATO,DOV,EFX,LEN,AEE,ULTA,DTE,BR,NTRS,WRB,CINF,CBOE,DXCM,TPR,BIIB,FE,GIS,STLD,DLTR,CFG,AWK,PPL,OMC,AVB,ES,STE,LULU,CNP,RF,JBL,TDY,EQR,IRM,LDOS,HUBB,STZ,PHM,HAL,EIX,PPG,KEY,WSM,VRSN,TROW,WAT,DVN,ON,NTAP,DRI,L,RL,CPAY,HPQ,LUV,PTC,CMS,NVR,LH,TPL,TSN,EXPD,CHD,PODD,SBAC,IP,INCY,SW,TYL,WST,DGX,NI,PFG,CTRA,TRMB,CNC,GPN,AMCR,JBHT,SMCI,MKC,CDW,PKG,IT,TTD,SNA,BG,ZBH,GPC,FTV,LII,DD,GDDY,ALB,ESS,GEN,PNR,WY,APTV,IFF,HOLX,Q,EVRG,INVH,LNT,DOW,COO,MAA,J,TXT,NWS,BBY,FFIV,ERIE,DPZ,NWSA,DECK,UHS,AVY,BALL,EG,LYB,ALLE,VTRS,KIM,NDSN,JKHY,MAS,IEX,HII,MRNA,WYNN,HRL,UDR,HST,AKAM,REG,ZBRA,BEN,CF,BXP,IVZ,CLX,AIZ,CPT,EPAM,HAS,BLDR,DOC,ALGN,SWK,GL,DAY,RVTY,FDS,SJM,NCLH,PNW,MGM,BAX,CRL,AES,SWKS,AOS,TAP,HSIC,TECH,PAYC,FRT,POOL,APA,CPB,MOH,CAG,ARE,GNRC,DVA,MTCH,LKQ,LW,MOS,MHK".split(',')
 DOW = "MMM,AXP,AMGN,AMZN,AAPL,BA,CAT,CVX,CSCO,KO,DIS,GS,HD,HON,IBM,JNJ,JPM,MCD,MRK,MSFT,NKE,NVDA,PG,CRM,SHW,TRV,UNH,VZ,V,WMT".split(',')
 NASDAQ100 = "ADBE,AMD,ABNB,GOOGL,GOOG,AMZN,AEP,AMGN,ADI,AAPL,AMAT,APP,ARM,ASML,AZN,TEAM,ADSK,ADP,AXON,BKR,BIIB,BKNG,AVGO,CDNS,CDW,CHTR,CTAS,CSCO,CCEP,CTSH,CMCSA,CEG,CPRT,CSGP,COST,CRWD,CSX,DDOG,DXCM,FANG,DASH,EA,EXC,FAST,FTNT,GEHC,GILD,GFS,HON,IDXX,INTC,INTU,ISRG,KDP,KLAC,KHC,LRCX,LIN,LULU,MAR,MRVL,MELI,META,MCHP,MU,MSFT,MSTR,MDLZ,MNST,NFLX,NVDA,NXPI,ORLY,ODFL,ON,PCAR,PLTR,PANW,PAYX,PYPL,PDD,PEP,QCOM,REGN,ROP,ROST,SHOP,SBUX,SNPS,TMUS,TTWO,TSLA,TXN,TRI,TTD,VRSK,VRTX,WBD,WDAY,XEL,ZS".split(',')
@@ -217,35 +216,17 @@ async def get_macro_context():
         'DX-Y.NYB': 'DXY'
     }
 
-    if MASSIVE_API_KEY:
-        async with httpx.AsyncClient() as client:
-            for sym, name in symbols.items():
-                try:
-                    url = f"https://api.polygon.io/v2/snapshot/locale/global/markets/indices/tickers/{sym}"
-                    params = {"apiKey": MASSIVE_API_KEY}
-                    resp = await client.get(url, params=params, timeout=10.0)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    ticker_data = data.get('ticker', {})
-                    day = ticker_data.get('day', {})
-                    close = day.get('c') or ticker_data.get('lastQuote', {}).get('p') or ticker_data.get('prevDayClose') or "N/A"
-                    if isinstance(close, (int, float)):
-                        context += f"{name} ${close:.2f} | "
-                    else:
-                        context += f"{name} N/A | "
-                except Exception:
-                    context += f"{name} N/A | "
-    else:
-        # Fallback to UW
+    async with httpx.AsyncClient() as client:
         for sym, name in symbols.items():
-            data = await get_ohlc(sym)
-            if data and data['bars'] and len(data['bars']) > 0:
-                close = data['bars'][-1].get('close')
-                if close is not None:
-                    context += f"{name} ${close:.2f} | "
-                else:
-                    context += f"{name} N/A | "
-            else:
+            try:
+                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+                params = {"range": "1d", "interval": "1m"}
+                resp = await client.get(url, params=params, timeout=10.0)
+                resp.raise_for_status()
+                data = resp.json()
+                close = data['chart']['result'][0]['meta']['regularMarketPrice']
+                context += f"{name} ${close:.2f} | "
+            except Exception:
                 context += f"{name} N/A | "
 
     return context.rstrip(" | ")
@@ -476,7 +457,7 @@ async def macro_pulse():
     await send_discord(msg)
 
 async def scheduler():
-    await send_discord("BEAST ONLINE — Massive API macro live | Live macro pulse every hour | Full scans on schedule | All upgrades active. 🦁🔥")
+    await send_discord("BEAST ONLINE — Live macro pulse every hour | Full scans on schedule | All upgrades active. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
