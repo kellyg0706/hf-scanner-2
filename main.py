@@ -13,12 +13,10 @@ app = FastAPI()
 
 # Environment variables
 UW_API_KEY = os.environ.get('UW_API_KEY')
-MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY')  # Your Polygon / Massive API key
+MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY')
 DISCORD_WEBHOOK = os.environ.get('DISCORD_WEBHOOK')
 if not UW_API_KEY or not DISCORD_WEBHOOK:
     raise RuntimeError("Please set UW_API_KEY and DISCORD_WEBHOOK environment variables.")
-if not MASSIVE_API_KEY:
-    print("Warning: MASSIVE_API_KEY not set — macro pre-market data will fallback to UW (may show N/A)")
 
 BASE_URL = "https://api.unusualwhales.com/api"
 HEADERS = {"Authorization": f"Bearer {UW_API_KEY}"}
@@ -283,7 +281,7 @@ async def sector_rotation():
         put = sum(t.get('premium', 0) for t in flow.get('data', []) if not t.get('is_call'))
         net = call - put
         sector_daily_flow[etf] = sector_daily_flow.get(etf, 0) + net
-        if abs(net) > 200_000:  # Lowered threshold
+        if abs(net) > 200_000:
             dir = "→ CALL HEAVY" if net > 0 else "← PUT HEAVY"
             alerts.append(f"{etf} {dir} ${abs(net):,.0f}")
     if alerts:
@@ -301,7 +299,7 @@ async def sector_rotation():
             for etf, net in sorted_flow[-3:]:
                 if net < 0: msg += f"{etf} ${net:,.0f}\n"
             await send_discord(msg)
-        sector_daily_flow = {}  # reset
+        sector_daily_flow = {}
 
 async def get_top_pre_market_movers():
     movers = []
@@ -478,7 +476,7 @@ async def macro_pulse():
     await send_discord(msg)
 
 async def scheduler():
-    await send_discord("BEAST ONLINE — Live macro pulse every hour | Full scans on schedule | All upgrades active. 🦁🔥")
+    await send_discord("BEAST ONLINE — Massive API macro live | Live macro pulse every hour | Full scans on schedule | All upgrades active. 🦁🔥")
     while True:
         try:
             now = datetime.now(ZoneInfo("America/Chicago"))
@@ -516,7 +514,9 @@ async def backtest(days: int = 7):
     return {"status": "triggered"}
 
 def start_scheduler():
-    asyncio.run(scheduler())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(scheduler())
 
 if __name__ == "__main__":
     threading.Thread(target=start_scheduler, daemon=True).start()
