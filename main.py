@@ -283,7 +283,7 @@ async def sector_rotation():
         put = sum(t.get('premium', 0) for t in flow.get('data', []) if not t.get('is_call'))
         net = call - put
         sector_daily_flow[etf] = sector_daily_flow.get(etf, 0) + net
-        if abs(net) > 200_000:  # Lowered to $200K for better sensitivity
+        if abs(net) > 200_000:  # Lowered threshold
             dir = "→ CALL HEAVY" if net > 0 else "← PUT HEAVY"
             alerts.append(f"{etf} {dir} ${abs(net):,.0f}")
     if alerts:
